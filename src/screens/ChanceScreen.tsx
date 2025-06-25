@@ -17,7 +17,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import ScreenWithAd from "../components/ScreenWithAd";
 import AdBanner from "../components/AdBanner";
 import moment from "moment";
-
+import Constants from "expo-constants";
+import EmptyState from "../components/emptyState";
+import SavedChance from "../components/savedChance";
 interface ChanceDraw {
   hearts: string;
   diamonds: string;
@@ -161,8 +163,15 @@ const ChanceScreen: React.FC = () => {
           </View>
 
           <ScrollView style={styles.savedContainer}>
-            <AdBanner />
-            <Text style={styles.savedTitle}>קלפים שמורים</Text>
+            {Platform.OS !== "web" && Constants.appOwnership !== "expo" && (
+              <AdBanner />
+            )}
+            {savedDraws.length > 0 ? (
+              <SavedChance savedChances={savedDraws} />
+            ) : (
+              <EmptyState />
+            )}
+            {/* <Text style={styles.savedTitle}>קלפים שמורים</Text>
             {savedDraws.map((entry, index) => (
               <View key={index} style={styles.savedEntry}>
                 <Text style={styles.dateText}>
@@ -196,7 +205,7 @@ const ChanceScreen: React.FC = () => {
                   />
                 </View>
               </View>
-            ))}
+            ))} */}
           </ScrollView>
         </View>
       </View>
