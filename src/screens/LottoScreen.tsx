@@ -16,7 +16,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import moment from "moment";
 import ScreenWithAd from "../components/ScreenWithAd";
 import AdBanner from "../components/AdBanner";
-
+import Constants from "expo-constants";
+import SavedNumbers from "../components/SavedNumbers";
+import EmptyState from "../components/emptyState";
 interface LottoNumbers {
   numbers: number[];
   strongNumber: number;
@@ -107,14 +109,15 @@ const LottoScreen: React.FC = () => {
       Alert.alert("שגיאה", "שגיאה בשמירת המספרים");
     }
   };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>משחק לוטו</Text>
         </View>
-        <AdBanner />
+        {Platform.OS !== "web" && Constants.appOwnership !== "expo" && (
+          <AdBanner />
+        )}
         <ScrollView style={styles.content}>
           <View style={styles.numbersContainer}>
             {currentDraw && (
@@ -163,35 +166,11 @@ const LottoScreen: React.FC = () => {
             </Button>
           </View>
 
-          <View style={styles.savedContainer}>
-            <Text style={styles.savedTitle}>מספרים שמורים</Text>
-            {savedDraws.map((entry, index) => (
-              <View key={index} style={styles.savedEntry}>
-                <Text style={styles.dateText}>
-                  {entry.isPredicted ? "חיזוי - " : ""}
-                  {/* moment().format('LLLL') */}
-                  {entry.date}
-                </Text>
-                <View style={styles.savedNumbers}>
-                  {entry.numbers.map((num, numIndex) => (
-                    <NumberCard
-                      key={numIndex}
-                      number={num}
-                      isStrong={false}
-                      index={numIndex}
-                      isPredicted={entry.isPredicted}
-                    />
-                  ))}
-                  <NumberCard
-                    number={entry.strongNumber}
-                    isStrong
-                    index={entry.numbers.length}
-                    isPredicted={entry.isPredicted}
-                  />
-                </View>
-              </View>
-            ))}
-          </View>
+          {savedDraws.length > 0 ? (
+            <SavedNumbers savedDraws={savedDraws} />
+          ) : (
+            <EmptyState />
+          )}
         </ScrollView>
       </View>
     </SafeAreaView>
