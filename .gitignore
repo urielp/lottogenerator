@@ -1,0 +1,60 @@
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build
+build/
+dist/
+.expo/
+.expo-shared/
+
+# Android
+android/app/build/
+android/.gradle/
+android/.idea/
+android/.cxx/
+android/local.properties
+android/*.iml
+android/*.hprof
+
+# iOS
+ios/build/
+ios/Pods/
+ios/Podfile.lock
+
+# Expo
+web-build/
+*.expo
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Misc
+*.log
+*.tmp
+*.swp
+
+# Bundle artifacts
+*.jsbundle
+
+# Test coverage
+coverage/
+
+# Backup files
+*.bak
+*.backup
+
+# Environment
+.env
+.env.* 

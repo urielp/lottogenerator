@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "מגריל מספרי לוטו וצ'אנס",
+    "slug": "lotto-generator",
+    "version": "1.0.3",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lottogenerator.app",
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~1178404587"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.lottogenerator.app",
+      "versionCode": 3,
+      "permissions": [],
+      "allowBackup": true,
+      "softwareKeyboardLayoutMode": "pan",
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~1178404587"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": ["react-native-google-mobile-ads"],
+    "extra": {
+      "eas": {
+        "projectId": "59ee84a4-972e-471f-9daf-0dc60c9f4480"
+      }
+    },
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false
+      }
+    }
+  }
+}
