@@ -18,6 +18,9 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import ScreenWithAd from "../components/ScreenWithAd";
 import AdBanner from "../components/AdBanner";
 import { URLs } from "../config/urls";
+import { useStatisticsData } from "../hooks/useStatisticsData";
+import FrequencyList from "../components/statistics/FrequencyList";
+import ProgressBar from "../components/statistics/ProgressBar";
 
 interface NumberFrequency {
   number: number;
@@ -47,18 +50,13 @@ const StatisticsScreen: React.FC = () => {
     lottoUrl: "https://pais.co.il/Lotto/lotto_resultsDownload.aspx",
     chanceUrl: "https://pais.co.il/chance/chance_resultsDownload.aspx",
   });
-  const [statistics, setStatistics] = useState<StatisticsData>({
-    lottoNumbers: {
-      regular: [],
-      strong: [],
-    },
-    chanceNumbers: {
-      regular: [],
-      strong: [],
-    },
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const {
+    statistics,
+    isLoading,
+    isRefreshing,
+    handleRefresh,
+    loadStatistics,
+  } = useStatisticsData();
   const progressAnimations = useRef<{ [key: string]: Animated.Value }>(
     {}
   ).current;
@@ -133,263 +131,8 @@ const StatisticsScreen: React.FC = () => {
   useFocusEffect(
     React.useCallback(() => {
       loadStatistics();
-    }, [])
+    }, [loadStatistics])
   );
-
-  const loadStatistics = async () => {
-    setIsLoading(true);
-    try {
-      // 1️⃣ Check AsyncStorage for cached stats and last update date
-      const [cachedStats, cachedDate] = await Promise.all([
-        AsyncStorage.getItem(STATS_KEY),
-        AsyncStorage.getItem(STATS_DATE_KEY),
-      ]);
-
-      if (cachedStats && cachedDate) {
-        const lastUpdated = new Date(cachedDate);
-        const now = new Date();
-        if (now.getTime() - lastUpdated.getTime() < ONE_MONTH_MS) {
-          // 2️⃣ Use cached stats if less than a month old
-          setStatistics(JSON.parse(cachedStats));
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // 3️⃣ Otherwise, fetch and parse CSVs as before
-      const lottoResponse = await axios.get(URLs.lotto.resultsDownload, {
-        timeout: 15000,
-        headers: {
-          Accept: "text/plain,text/csv,application/csv,*/*",
-          "Content-Type": "text/plain",
-          "User-Agent": "Mozilla/5.0",
-          "Accept-Language": "he-IL",
-          Referer: "https://www.pais.co.il/",
-        },
-        validateStatus: (status) => status >= 200 && status < 300,
-      });
-
-      const lottoCsvContent = lottoResponse.data;
-
-      if (!lottoCsvContent || typeof lottoCsvContent !== "string") {
-        throw new Error("Invalid Lotto CSV content received");
-      }
-
-      // Fetch Chance data
-      const chanceResponse = await axios.get(URLs.chance.resultsDownload, {
-        timeout: 15000,
-        headers: {
-          Accept: "text/plain,text/csv,application/csv,*/*",
-          "Content-Type": "text/plain",
-          "User-Agent": "Mozilla/5.0",
-          "Accept-Language": "he-IL",
-          Referer: "https://www.pais.co.il/",
-        },
-        validateStatus: (status) => status >= 200 && status < 300,
-      });
-
-      const chanceCsvContent = chanceResponse.data;
-
-      if (!chanceCsvContent || typeof chanceCsvContent !== "string") {
-        throw new Error("Invalid Chance CSV content received");
-      }
-
-      // Process Lotto numbers
-      const lottoData = processLottoData(lottoCsvContent);
-      // Process Chance numbers
-      const chanceData = processChanceData(chanceCsvContent);
-
-      const newStats = {
-        lottoNumbers: lottoData,
-        chanceNumbers: chanceData,
-      };
-
-      setStatistics(newStats);
-
-      // 4️⃣ Save new stats and date to AsyncStorage
-      await Promise.all([
-        AsyncStorage.setItem(STATS_KEY, JSON.stringify(newStats)),
-        AsyncStorage.setItem(STATS_DATE_KEY, new Date().toISOString()),
-      ]);
-    } catch (error) {
-      console.error("StatisticsScreen: Error loading statistics:", error);
-      let errorMessage = "אירעה שגיאה בטעינת הנתונים ההיסטוריים.";
-
-      if (axios.isAxiosError(error)) {
-        if (error.code === "ECONNABORTED") {
-          errorMessage = "הבקשה נכשלה עקב חוסר זמן תגובה. אנא נסה שוב.";
-        } else if (error.response) {
-          errorMessage = `שגיאת שרת: ${error.response.status} ${error.response.statusText}`;
-        } else if (error.request) {
-          errorMessage =
-            "לא ניתן להתחבר לשרת. אנא וודא שיש לך חיבור לאינטרנט ונסה שוב.";
-        } else {
-          errorMessage = `שגיאת רשת: ${error.message}`;
-        }
-      } else if (error instanceof Error) {
-        errorMessage = `שגיאה: ${error.message}`;
-      }
-
-      Alert.alert("שגיאה בטעינת נתונים", errorMessage, [
-        { text: "אישור", style: "default" },
-      ]);
-
-      setStatistics({
-        lottoNumbers: {
-          regular: [],
-          strong: [],
-        },
-        chanceNumbers: {
-          regular: [],
-          strong: [],
-        },
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const processLottoData = (csvContent: string) => {
-    const regularCounts = new Map<number, number>();
-    const strongCounts = new Map<number, number>();
-
-    const lines = csvContent.split("\n").slice(1);
-    const limitedLines = lines.slice(0, 2000);
-    const totalDraws = limitedLines.length;
-
-    if (totalDraws === 0) {
-      return { regular: [], strong: [] };
-    }
-
-    limitedLines.forEach((line) => {
-      if (!line.trim()) return;
-
-      const columns = line.split(",").map((col) => col.trim());
-
-      if (columns.length < 9) return;
-
-      const drawId = parseInt(columns[0], 10);
-      if (isNaN(drawId)) return;
-
-      const regularNumbers = columns
-        .slice(2, 8)
-        .map((num) => {
-          const cleanNum = num.replace(/[^0-9.]/g, "");
-          const parsedNum = parseInt(cleanNum, 10);
-          return parsedNum >= 1 && parsedNum <= 37 ? parsedNum : NaN;
-        })
-        .filter((num) => !isNaN(num));
-
-      if (regularNumbers.length !== 6) return;
-
-      if (columns.slice(2, 9).some((col) => /[AJQK]/.test(col.toUpperCase())))
-        return;
-
-      regularNumbers.forEach((num) => {
-        regularCounts.set(num, (regularCounts.get(num) || 0) + 1);
-      });
-
-      const strongNum = columns[8].trim();
-      const strongNumber = parseInt(strongNum.replace(/[^0-9.]/g, ""), 10);
-
-      if (!isNaN(strongNumber) && strongNumber >= 1 && strongNumber <= 7) {
-        strongCounts.set(
-          strongNumber,
-          (strongCounts.get(strongNumber) || 0) + 1
-        );
-      }
-    });
-
-    const regularFreq = Array.from(regularCounts.entries())
-      .map(([number, count]) => ({
-        number,
-        count,
-        percentage: Math.floor((count * 100) / totalDraws),
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    const strongFreq = Array.from(strongCounts.entries())
-      .map(([number, count]) => ({
-        number,
-        count,
-        percentage: Math.floor((count * 100) / totalDraws),
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    return { regular: regularFreq, strong: strongFreq };
-  };
-
-  const processChanceData = (csvContent: string) => {
-    const regularCounts = new Map<string, { count: number; face: string }>();
-    let validDraws = 0;
-
-    const lines = csvContent.split("\n").slice(1);
-    const limitedLines = lines.slice(0, 2000);
-    const totalDraws = limitedLines.length;
-
-    if (totalDraws === 0) {
-      return { regular: [], strong: [] };
-    }
-
-    limitedLines.forEach((line) => {
-      if (!line.trim()) return;
-
-      const columns = line.split(",").map((col) => col.trim());
-
-      if (columns.length < 6) return;
-
-      const drawId = parseInt(columns[1], 10);
-      if (isNaN(drawId)) return;
-
-      const cardData = columns
-        .slice(2, 6)
-        .map((value, idx) => {
-          const cleanValue = value.trim().toUpperCase();
-          const faces = ["♣", "♦", "♥", "♠"];
-
-          let number;
-          if (cleanValue === "A") number = 1;
-          else if (cleanValue === "J") number = 11;
-          else if (cleanValue === "Q") number = 12;
-          else if (cleanValue === "K") number = 13;
-          else number = parseInt(cleanValue.replace(/[^0-9.]/g, ""), 10);
-
-          return {
-            number,
-            face: faces[idx],
-          };
-        })
-        .filter((data) => !isNaN(data.number));
-
-      if (cardData.length === 4) {
-        validDraws++;
-      }
-
-      cardData.forEach(({ number, face }) => {
-        if (number >= 1 && number <= 13) {
-          const key = `${number}-${face}`;
-          const current = regularCounts.get(key) || { count: 0, face };
-          regularCounts.set(key, { count: current.count + 1, face });
-        }
-      });
-    });
-
-    const regularFreq = Array.from(regularCounts.entries())
-      .map(([key, { count, face }]) => {
-        const [numberStr] = key.split("-");
-        const number = parseInt(numberStr, 10);
-        const percentage = Math.floor((count * 100) / (validDraws * 4));
-        return {
-          number,
-          count,
-          percentage,
-          face,
-        };
-      })
-      .sort((a, b) => b.count - a.count);
-
-    return { regular: regularFreq, strong: [] };
-  };
 
   const getLottoNumberColor = (number: number, isStrong: boolean) => {
     if (isStrong) return "#FF5722"; // Keep strong numbers orange
@@ -428,13 +171,6 @@ const StatisticsScreen: React.FC = () => {
     }
   };
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    loadStatistics().finally(() => {
-      setIsRefreshing(false);
-    });
-  };
-
   const getAnimationKey = (
     number: number,
     isStrong: boolean,
@@ -458,103 +194,19 @@ const StatisticsScreen: React.FC = () => {
       progressAnimations[animationKey] = new Animated.Value(0);
     }
 
-    return (
-      <View style={styles.progressBackground}>
-        <Animated.View
-          style={[
-            styles.progressFill,
-            {
-              width: progressAnimations[animationKey].interpolate({
-                inputRange: [0, 100],
-                outputRange: ["0%", "100%"],
-              }),
-              backgroundColor: getColorForPercentage(count, maxCount, isStrong),
-            },
-          ]}
-        />
-      </View>
-    );
-  };
-
-  const renderFrequencyList = (
-    items: NumberFrequency[],
-    isStrong: boolean = false,
-    isChance: boolean = false
-  ) => {
-    if (!items || items.length === 0) {
-      return (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>אין נתונים זמינים</Text>
-        </View>
-      );
-    }
-
-    const sortedItems = [...items].sort((a, b) => b.count - a.count);
-    const maxCount = sortedItems[0]?.count || 1;
-
-    return items.map((item, index) => {
-      const displayValue = isChance
-        ? (() => {
-            switch (item.number) {
-              case 1:
-                return "A";
-              case 11:
-                return "J";
-              case 12:
-                return "Q";
-              case 13:
-                return "K";
-              default:
-                return item.number.toString();
-            }
-          })()
-        : item.number.toString();
-
-      const getCardColor = () => {
-        if (isChance) {
-          if (item.face === "♥" || item.face === "♦") return "#D32F2F";
-          return "#212121";
-        }
-        return getLottoNumberColor(item.number, isStrong);
-      };
-
-      return (
-        <View key={index} style={styles.statRow}>
-          <View style={styles.numberContainer}>
-            <View style={styles.numberAndFaceContainer}>
-              {!isChance ? (
-                <View
-                  style={[
-                    styles.ballContainer,
-                    { backgroundColor: getCardColor() },
-                  ]}
-                >
-                  <Text style={styles.ballNumberText}>{displayValue}</Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={[styles.numberText, { color: getCardColor() }]}>
-                    {displayValue}
-                  </Text>
-                  {item.face && (
-                    <Text style={[styles.faceText, { color: getCardColor() }]}>
-                      {item.face}
-                    </Text>
-                  )}
-                </>
-              )}
-            </View>
-          </View>
-          <View style={styles.progressContainer}>
-            {renderProgressBar(item.count, maxCount, isStrong, item)}
-          </View>
-          <View style={styles.statsContainer}>
-            <Text style={styles.countText}>{item.count}</Text>
-            <Text style={styles.percentageText}>{item.percentage}%</Text>
-          </View>
-        </View>
-      );
+    // Interpolate the animated value to a width percentage
+    const animatedWidth = progressAnimations[animationKey].interpolate({
+      inputRange: [0, 100],
+      outputRange: ["0%", "100%"],
     });
+
+    return (
+      <ProgressBar
+        progress={widthPercent}
+        color={getColorForPercentage(count, maxCount, isStrong)}
+        style={styles.progressBackground}
+      />
+    );
   };
 
   return (
@@ -594,19 +246,25 @@ const StatisticsScreen: React.FC = () => {
                 <Text style={styles.sectionTitle}>מספרי לוטו</Text>
                 <View style={styles.subsection}>
                   <Text style={styles.subsectionTitle}>מספרים רגילים</Text>
-                  {renderFrequencyList(
-                    statistics.lottoNumbers.regular,
-                    false,
-                    false
-                  )}
+                  <FrequencyList
+                    items={statistics.lottoNumbers.regular}
+                    isStrong={false}
+                    isChance={false}
+                    progressAnimations={progressAnimations}
+                    renderProgressBar={renderProgressBar}
+                    getLottoNumberColor={getLottoNumberColor}
+                  />
                 </View>
                 <View style={styles.subsection}>
                   <Text style={styles.subsectionTitle}>מספר חזק</Text>
-                  {renderFrequencyList(
-                    statistics.lottoNumbers.strong,
-                    true,
-                    false
-                  )}
+                  <FrequencyList
+                    items={statistics.lottoNumbers.strong}
+                    isStrong={true}
+                    isChance={false}
+                    progressAnimations={progressAnimations}
+                    renderProgressBar={renderProgressBar}
+                    getLottoNumberColor={getLottoNumberColor}
+                  />
                 </View>
               </View>
 
@@ -614,11 +272,14 @@ const StatisticsScreen: React.FC = () => {
                 <Text style={styles.sectionTitle}>מספרי צ'אנס</Text>
                 <View style={styles.subsection}>
                   <Text style={styles.subsectionTitle}>מספרים רגילים</Text>
-                  {renderFrequencyList(
-                    statistics.chanceNumbers.regular,
-                    false,
-                    true
-                  )}
+                  <FrequencyList
+                    items={statistics.chanceNumbers.regular}
+                    isStrong={false}
+                    isChance={true}
+                    progressAnimations={progressAnimations}
+                    renderProgressBar={renderProgressBar}
+                    getLottoNumberColor={getLottoNumberColor}
+                  />
                 </View>
               </View>
             </ScrollView>
