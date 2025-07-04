@@ -27,6 +27,12 @@ interface Settings {
   chanceUrl: string;
 }
 
+const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+const LOTTO_CSV_KEY = "lotto_csv_data";
+const LOTTO_CSV_DATE_KEY = "lotto_csv_last_updated";
+const CHANCE_CSV_KEY = "chance_csv_data";
+const CHANCE_CSV_DATE_KEY = "chance_csv_last_updated";
+
 const PredictionsScreen: React.FC = () => {
   const [settings] = useState<Settings>({
     lottoUrl: "https://pais.co.il/Lotto/lotto_resultsDownload.aspx",
@@ -52,36 +58,62 @@ const PredictionsScreen: React.FC = () => {
   const generateGamePrediction = async (gameType: "lotto" | "chance") => {
     setIsLoading(true);
     try {
+      // 1️⃣ Setup keys for AsyncStorage
+      const csvKey = gameType === "lotto" ? LOTTO_CSV_KEY : CHANCE_CSV_KEY;
+      const dateKey = gameType === "lotto" ? LOTTO_CSV_DATE_KEY : CHANCE_CSV_DATE_KEY;
       const url =
         gameType === "lotto"
           ? URLs.lotto.resultsDownload
           : URLs.chance.resultsDownload;
 
-      const response = await axios.get(url, {
-        headers: {
-          Accept: "text/csv,application/csv,application/octet-stream,*/*",
-          "Accept-Language": "he-IL",
-          Referer: "https://pais.co.il/",
-          "User-Agent": "Mozilla/5.0",
-        },
-        responseType: "text",
-      });
+      // 2️⃣ Try to get cached CSV and date
+      const [cachedCSV, cachedDate] = await Promise.all([
+        AsyncStorage.getItem(csvKey),
+        AsyncStorage.getItem(dateKey),
+      ]);
 
-      if (response.status !== 200) {
-        throw new Error(
-          `שגיאה בטעינת נתוני ${gameType === "lotto" ? "לוטו" : "צ'אנס"}: ${
-            response.status
-          }`
-        );
+      let data: string | null = null;
+      if (cachedCSV && cachedDate) {
+        const lastUpdated = new Date(cachedDate);
+        const now = new Date();
+        if (now.getTime() - lastUpdated.getTime() < ONE_MONTH_MS) {
+          data = cachedCSV;
+        }
       }
 
-      const data = response.data;
-      if (!data || typeof data !== "string" || data.trim().length === 0) {
-        throw new Error(
-          `לא התקבלו נתונים תקינים מכתובת ה-URL של ${
-            gameType === "lotto" ? "לוטו" : "צ'אנס"
-          }`
-        );
+      // 3️⃣ If no valid cache, fetch and cache new CSV
+      if (!data) {
+        const response = await axios.get(url, {
+          headers: {
+            Accept: "text/csv,application/csv,application/octet-stream,*/*",
+            "Accept-Language": "he-IL",
+            Referer: "https://pais.co.il/",
+            "User-Agent": "Mozilla/5.0",
+          },
+          responseType: "text",
+        });
+
+        if (response.status !== 200) {
+          throw new Error(
+            `שגיאה בטעינת נתוני ${gameType === "lotto" ? "לוטו" : "צ'אנס"}: ${
+              response.status
+            }`
+          );
+        }
+
+        if (!response.data || typeof response.data !== "string" || response.data.trim().length === 0) {
+          throw new Error(
+            `לא התקבלו נתונים תקינים מכתובת ה-URL של ${
+              gameType === "lotto" ? "לוטו" : "צ'אנס"
+            }`
+          );
+        }
+        data = response.data;
+        // Cache the CSV and date
+        await Promise.all([
+          AsyncStorage.setItem(csvKey, data),
+          AsyncStorage.setItem(dateKey, new Date().toISOString()),
+        ]);
       }
 
       setIsAnalyzing(true);

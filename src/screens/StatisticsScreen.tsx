@@ -63,6 +63,10 @@ const StatisticsScreen: React.FC = () => {
     {}
   ).current;
 
+  const STATS_KEY = "statistics_data";
+  const STATS_DATE_KEY = "statistics_last_updated";
+  const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+
   // Initialize animations when statistics change
   useEffect(() => {
     const initializeAnimations = () => {
@@ -135,7 +139,24 @@ const StatisticsScreen: React.FC = () => {
   const loadStatistics = async () => {
     setIsLoading(true);
     try {
-      // Fetch Lotto data
+      // 1️⃣ Check AsyncStorage for cached stats and last update date
+      const [cachedStats, cachedDate] = await Promise.all([
+        AsyncStorage.getItem(STATS_KEY),
+        AsyncStorage.getItem(STATS_DATE_KEY),
+      ]);
+
+      if (cachedStats && cachedDate) {
+        const lastUpdated = new Date(cachedDate);
+        const now = new Date();
+        if (now.getTime() - lastUpdated.getTime() < ONE_MONTH_MS) {
+          // 2️⃣ Use cached stats if less than a month old
+          setStatistics(JSON.parse(cachedStats));
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // 3️⃣ Otherwise, fetch and parse CSVs as before
       const lottoResponse = await axios.get(URLs.lotto.resultsDownload, {
         timeout: 15000,
         headers: {
@@ -178,10 +199,18 @@ const StatisticsScreen: React.FC = () => {
       // Process Chance numbers
       const chanceData = processChanceData(chanceCsvContent);
 
-      setStatistics({
+      const newStats = {
         lottoNumbers: lottoData,
         chanceNumbers: chanceData,
-      });
+      };
+
+      setStatistics(newStats);
+
+      // 4️⃣ Save new stats and date to AsyncStorage
+      await Promise.all([
+        AsyncStorage.setItem(STATS_KEY, JSON.stringify(newStats)),
+        AsyncStorage.setItem(STATS_DATE_KEY, new Date().toISOString()),
+      ]);
     } catch (error) {
       console.error("StatisticsScreen: Error loading statistics:", error);
       let errorMessage = "אירעה שגיאה בטעינת הנתונים ההיסטוריים.";
