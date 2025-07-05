@@ -1,6 +1,7 @@
 // src/components/SavedNumbers.tsx
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import NumberCard from "./NumberCard";
 
 interface LottoNumbers {
@@ -12,9 +13,28 @@ interface LottoNumbers {
 
 interface SavedNumbersProps {
   savedDraws: LottoNumbers[];
+  onDelete?: (index: number) => void;
 }
 
-const SavedNumbers: React.FC<SavedNumbersProps> = ({ savedDraws }) => {
+const SavedNumbers: React.FC<SavedNumbersProps> = ({ savedDraws, onDelete }) => {
+  const handleDelete = (index: number) => {
+    Alert.alert(
+      "מחיקת מספרים",
+      "האם אתה בטוח שברצונך למחוק את המספרים השמורים?",
+      [
+        {
+          text: "ביטול",
+          style: "cancel",
+        },
+        {
+          text: "מחק",
+          style: "destructive",
+          onPress: () => onDelete?.(index),
+        },
+      ]
+    );
+  };
+
   if (!savedDraws.length) {
     return (
       <View style={styles.savedContainer}>
@@ -27,11 +47,21 @@ const SavedNumbers: React.FC<SavedNumbersProps> = ({ savedDraws }) => {
     <View style={styles.savedContainer}>
       <Text style={styles.savedTitle}>מספרים שמורים</Text>
       {savedDraws.map((entry, index) => (
-        <View key={index} style={styles.savedEntry}>
-          <Text style={styles.dateText}>
-            {entry.isPredicted ? "חיזוי - " : ""}
-            {entry.date}
-          </Text>
+        <View key={entry.date + entry.strongNumber} style={styles.savedEntry}>
+          <View style={styles.entryHeader}>
+            <Text style={styles.dateText}>
+              {entry.isPredicted ? "חיזוי - " : ""}
+              {entry.date}
+            </Text>
+            {onDelete && (
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDelete(index)}
+              >
+                <Ionicons name="trash-outline" size={20} color="#ff4444"  style={{ marginBottom: 2, marginLeft: 10 }}/>
+              </TouchableOpacity>
+            )}
+          </View>
           <View style={styles.savedNumbers}>
             {entry.numbers.map((num, numIndex) => (
               <NumberCard
@@ -71,6 +101,19 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  entryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  deleteButton: {
+    padding: 5,
+
   },
   savedTitle: {
     fontSize: 20,
@@ -85,8 +128,8 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     color: "#666",
-    marginBottom: 10,
     textAlign: "right",
+    flex: 1,
   },
 });
 
