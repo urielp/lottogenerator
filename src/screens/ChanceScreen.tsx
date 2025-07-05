@@ -20,6 +20,7 @@ import moment from "moment";
 import Constants from "expo-constants";
 import EmptyState from "../components/emptyState";
 import SavedChance from "../components/savedChance";
+import { generateChanceDraw } from "../utils/generators";
 interface ChanceDraw {
   hearts: string;
   diamonds: string;
@@ -82,21 +83,21 @@ const ChanceScreen: React.FC = () => {
   };
 
   const drawCard = () => {
-    const newDraw: ChanceDraw = {
-      hearts: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
-      diamonds: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
-      clubs: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
-      spades: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
-      date: new Date().toLocaleString("he-IL", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }),
-    };
-    setCurrentDraw(newDraw);
+    // const newDraw: ChanceDraw = {
+    //   hearts: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
+    //   diamonds: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
+    //   clubs: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
+    //   spades: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
+    //   date: new Date().toLocaleString("he-IL", {
+    //     year: "numeric",
+    //     month: "2-digit",
+    //     day: "2-digit",
+    //     hour: "2-digit",
+    //     minute: "2-digit",
+    //     hour12: false,
+    //   }),
+    // };
+    setCurrentDraw(generateChanceDraw());
   };
 
   const saveDraw = async () => {
@@ -113,6 +114,18 @@ const ChanceScreen: React.FC = () => {
     } catch (error) {
       console.error("Error saving draw:", error);
       Alert.alert("שגיאה", "שגיאה בשמירת הקלפים");
+    }
+  }; 
+   const handleDelete = async(index: number) => {
+
+    try{
+      const updatedSaved = savedDraws.filter((_, i) => i !== index);
+      await AsyncStorage.setItem("chanceDraws", JSON.stringify(updatedSaved));
+      setSavedDraws(updatedSaved);
+      Alert.alert("הצלחה", "הקלפים נמחקו בהצלחה!");
+    }
+    catch(error){
+      console.error("Error deleting draw:", error);
     }
   };
 
@@ -163,49 +176,12 @@ const ChanceScreen: React.FC = () => {
           </View>
 
           <ScrollView style={styles.savedContainer}>
-            {Platform.OS !== "web" && Constants.appOwnership !== "expo" && (
-              <AdBanner />
-            )}
+            <AdBanner />
             {savedDraws.length > 0 ? (
-              <SavedChance savedChances={savedDraws} />
+              <SavedChance savedChances={savedDraws} onDelete={handleDelete} />
             ) : (
               <EmptyState />
             )}
-            {/* <Text style={styles.savedTitle}>קלפים שמורים</Text>
-            {savedDraws.map((entry, index) => (
-              <View key={index} style={styles.savedEntry}>
-                <Text style={styles.dateText}>
-                  {entry.isPredicted ? "חיזוי - " : ""}
-                  {entry.date}
-                </Text>
-                <View style={styles.savedCards}>
-                  <Card
-                    suit="♥"
-                    value={entry.hearts}
-                    index={0}
-                    isPredicted={entry.isPredicted}
-                  />
-                  <Card
-                    suit="♦"
-                    value={entry.diamonds}
-                    index={1}
-                    isPredicted={entry.isPredicted}
-                  />
-                  <Card
-                    suit="♣"
-                    value={entry.clubs}
-                    index={2}
-                    isPredicted={entry.isPredicted}
-                  />
-                  <Card
-                    suit="♠"
-                    value={entry.spades}
-                    index={3}
-                    isPredicted={entry.isPredicted}
-                  />
-                </View>
-              </View>
-            ))} */}
           </ScrollView>
         </View>
       </View>
