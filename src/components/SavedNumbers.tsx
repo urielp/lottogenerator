@@ -9,6 +9,7 @@ interface LottoNumbers {
   strongNumber: number;
   date: string;
   isPredicted?: boolean;
+  uniqueId?: string;
 }
 
 interface SavedNumbersProps {
@@ -16,7 +17,10 @@ interface SavedNumbersProps {
   onDelete?: (index: number) => void;
 }
 
-const SavedNumbers: React.FC<SavedNumbersProps> = ({ savedDraws, onDelete }) => {
+const SavedNumbers: React.FC<SavedNumbersProps> = ({
+  savedDraws,
+  onDelete,
+}) => {
   const handleDelete = (index: number) => {
     Alert.alert(
       "מחיקת מספרים",
@@ -47,7 +51,10 @@ const SavedNumbers: React.FC<SavedNumbersProps> = ({ savedDraws, onDelete }) => 
     <View style={styles.savedContainer}>
       <Text style={styles.savedTitle}>מספרים שמורים</Text>
       {savedDraws.map((entry, index) => (
-        <View key={entry.date + entry.strongNumber} style={styles.savedEntry}>
+        <View
+          key={entry.uniqueId || `${entry.date}_${entry.strongNumber}_${index}`}
+          style={styles.savedEntry}
+        >
           <View style={styles.entryHeader}>
             <Text style={styles.dateText}>
               {entry.isPredicted ? "חיזוי - " : ""}
@@ -58,7 +65,7 @@ const SavedNumbers: React.FC<SavedNumbersProps> = ({ savedDraws, onDelete }) => 
                 style={styles.deleteButton}
                 onPress={() => handleDelete(index)}
               >
-                <Ionicons name="trash-outline" size={20} color="#ff4444"  style={{ marginBottom: 2, marginLeft: 10 }}/>
+                <Ionicons name="trash-outline" size={24} color="#ff4444" />
               </TouchableOpacity>
             )}
           </View>
@@ -112,8 +119,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   deleteButton: {
-    padding: 5,
-
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: "#f8f8f8",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 40,
+    minHeight: 40,
   },
   savedTitle: {
     fontSize: 20,

@@ -24,6 +24,7 @@ interface LottoNumbers {
   strongNumber: number;
   date: string;
   isPredicted?: boolean;
+  uniqueId?: string;
 }
 
 const LottoScreen: React.FC = () => {
@@ -42,6 +43,14 @@ const LottoScreen: React.FC = () => {
       const saved = await AsyncStorage.getItem("lottoDraws");
       const regularSaved = saved ? JSON.parse(saved) : [];
 
+      // Ensure regular saved draws have uniqueId
+      const regularSavedWithIds = regularSaved.map(
+        (draw: any, index: number) => ({
+          ...draw,
+          uniqueId: draw.uniqueId || `regular_legacy_${index}_${Date.now()}`,
+        })
+      );
+
       // Load predicted draws
       const savedPredictions = await AsyncStorage.getItem(
         "savedLottoPredictions"
@@ -52,20 +61,56 @@ const LottoScreen: React.FC = () => {
 
       // Combine both types of saved draws
       const allSaved = [
-        ...regularSaved,
-        ...predictedSaved.map((pred: any) => ({
-          numbers: pred.numbers,
-          strongNumber: pred.strongNumber,
-          date: moment(pred.date).isValid()
-            ? moment(pred.date).format("DD/MM/YYYY HH:mm")
-            : "תאריך לא תקין",
-          isPredicted: true,
-        })),
-      ].sort(
-        (a, b) =>
-          moment(b.date, "DD/MM/YYYY HH:mm").toDate().getTime() -
-          moment(a.date, "DD/MM/YYYY HH:mm").toDate().getTime()
-      );
+        ...regularSavedWithIds,
+        ...predictedSaved.map((pred: any, index: number) => {
+          // Handle different possible date formats
+          let formattedDate = "תאריך לא תקין";
+
+          if (pred.date) {
+            // Try to parse different date formats
+            let parsedDate;
+
+            // Try DD.MM.YYYY, HH:mm format
+            if (pred.date.includes(".") && pred.date.includes(",")) {
+              parsedDate = moment(pred.date, "DD.MM.YYYY, HH:mm");
+            }
+            // Try DD/MM/YYYY HH:mm format
+            else if (pred.date.includes("/")) {
+              parsedDate = moment(pred.date, "DD/MM/YYYY HH:mm");
+            }
+            // Try ISO format
+            else {
+              parsedDate = moment(pred.date);
+            }
+
+            if (parsedDate.isValid()) {
+              formattedDate = parsedDate.format("DD/MM/YYYY HH:mm");
+            }
+          }
+
+          return {
+            numbers: pred.numbers,
+            strongNumber: pred.strongNumber,
+            date: formattedDate,
+            isPredicted: true,
+            uniqueId: `predicted_${index}_${Date.now()}`, // Add unique identifier
+          };
+        }),
+      ].sort((a, b) => {
+        // Handle sorting with proper date parsing
+        const dateA = moment(a.date, "DD/MM/YYYY HH:mm", true);
+        const dateB = moment(b.date, "DD/MM/YYYY HH:mm", true);
+
+        // If both dates are valid, sort by date
+        if (dateA.isValid() && dateB.isValid()) {
+          return dateB.toDate().getTime() - dateA.toDate().getTime();
+        }
+        // Put invalid dates at the end
+        if (!dateA.isValid() && dateB.isValid()) return 1;
+        if (dateA.isValid() && !dateB.isValid()) return -1;
+        // If both invalid, maintain original order
+        return 0;
+      });
 
       setSavedDraws(allSaved);
     } catch (error) {
@@ -100,7 +145,11 @@ const LottoScreen: React.FC = () => {
     }
 
     try {
-      const updatedSaved = [...savedDraws, currentDraw];
+      const drawWithId = {
+        ...currentDraw,
+        uniqueId: `regular_${Date.now()}_${Math.random()}`,
+      };
+      const updatedSaved = [...savedDraws, drawWithId];
       await AsyncStorage.setItem("lottoDraws", JSON.stringify(updatedSaved));
       setSavedDraws(updatedSaved);
       Alert.alert("הצלחה", "המספרים נשמרו בהצלחה!");
