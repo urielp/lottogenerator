@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   View,
-  TouchableOpacity,
   Text,
   ScrollView,
   Alert,
@@ -11,15 +10,15 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Card from "../components/Card";
+import SavedChance from "../components/savedChance";
 import { Button } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { format, parse, isValid, getTime, parseISO } from "date-fns";
 import ScreenWithAd from "../components/ScreenWithAd";
 import AdBanner from "../components/AdBanner";
-import moment from "moment";
 import Constants from "expo-constants";
 import EmptyState from "../components/emptyState";
-import SavedChance from "../components/savedChance";
 import { generateChanceDraw } from "../utils/generators";
 interface ChanceDraw {
   hearts: string;
@@ -65,16 +64,32 @@ const ChanceScreen: React.FC = () => {
           diamonds: pred.diamonds.toString(),
           clubs: pred.clubs.toString(),
           spades: pred.spades.toString(),
-          date: moment(pred.date).isValid()
-            ? moment(pred.date).format("DD/MM/YYYY HH:mm")
-            : "תאריך לא תקין",
+          date: (() => {
+            try {
+              let parsedDate = parseISO(pred.date);
+              if (!isValid(parsedDate)) {
+                parsedDate = new Date(pred.date);
+              }
+              return isValid(parsedDate)
+                ? format(parsedDate, "dd/MM/yyyy HH:mm")
+                : "תאריך לא תקין";
+            } catch {
+              return "תאריך לא תקין";
+            }
+          })(),
           isPredicted: true,
         })),
-      ].sort(
-        (a, b) =>
-          moment(b.date, "DD/MM/YYYY HH:mm").toDate().getTime() -
-          moment(a.date, "DD/MM/YYYY HH:mm").toDate().getTime()
-      );
+      ].sort((a, b) => {
+        const dateA = parse(a.date, "dd/MM/yyyy HH:mm", new Date());
+        const dateB = parse(b.date, "dd/MM/yyyy HH:mm", new Date());
+
+        if (isValid(dateA) && isValid(dateB)) {
+          return getTime(dateB) - getTime(dateA);
+        }
+        if (!isValid(dateA) && isValid(dateB)) return 1;
+        if (isValid(dateA) && !isValid(dateB)) return -1;
+        return 0;
+      });
 
       setSavedDraws(allSaved);
     } catch (error) {
@@ -115,16 +130,14 @@ const ChanceScreen: React.FC = () => {
       console.error("Error saving draw:", error);
       Alert.alert("שגיאה", "שגיאה בשמירת הקלפים");
     }
-  }; 
-   const handleDelete = async(index: number) => {
-
-    try{
+  };
+  const handleDelete = async (index: number) => {
+    try {
       const updatedSaved = savedDraws.filter((_, i) => i !== index);
       await AsyncStorage.setItem("chanceDraws", JSON.stringify(updatedSaved));
       setSavedDraws(updatedSaved);
       Alert.alert("הצלחה", "הקלפים נמחקו בהצלחה!");
-    }
-    catch(error){
+    } catch (error) {
       console.error("Error deleting draw:", error);
     }
   };

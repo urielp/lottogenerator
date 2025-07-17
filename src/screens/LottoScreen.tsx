@@ -13,7 +13,7 @@ import NumberCard from "../components/NumberCard";
 import { Button } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import moment from "moment";
+import { format, parse, isValid, getTime, parseISO } from "date-fns";
 import ScreenWithAd from "../components/ScreenWithAd";
 import AdBanner from "../components/AdBanner";
 import Constants from "expo-constants";
@@ -72,19 +72,26 @@ const LottoScreen: React.FC = () => {
 
             // Try DD.MM.YYYY, HH:mm format
             if (pred.date.includes(".") && pred.date.includes(",")) {
-              parsedDate = moment(pred.date, "DD.MM.YYYY, HH:mm");
+              parsedDate = parse(pred.date, "dd.MM.yyyy, HH:mm", new Date());
             }
             // Try DD/MM/YYYY HH:mm format
             else if (pred.date.includes("/")) {
-              parsedDate = moment(pred.date, "DD/MM/YYYY HH:mm");
+              parsedDate = parse(pred.date, "dd/MM/yyyy HH:mm", new Date());
             }
-            // Try ISO format
+            // Try ISO format or other standard formats
             else {
-              parsedDate = moment(pred.date);
+              try {
+                parsedDate = parseISO(pred.date);
+                if (!isValid(parsedDate)) {
+                  parsedDate = new Date(pred.date);
+                }
+              } catch {
+                parsedDate = new Date(pred.date);
+              }
             }
 
-            if (parsedDate.isValid()) {
-              formattedDate = parsedDate.format("DD/MM/YYYY HH:mm");
+            if (isValid(parsedDate)) {
+              formattedDate = format(parsedDate, "dd/MM/yyyy HH:mm");
             }
           }
 
@@ -98,16 +105,16 @@ const LottoScreen: React.FC = () => {
         }),
       ].sort((a, b) => {
         // Handle sorting with proper date parsing
-        const dateA = moment(a.date, "DD/MM/YYYY HH:mm", true);
-        const dateB = moment(b.date, "DD/MM/YYYY HH:mm", true);
+        const dateA = parse(a.date, "dd/MM/yyyy HH:mm", new Date());
+        const dateB = parse(b.date, "dd/MM/yyyy HH:mm", new Date());
 
         // If both dates are valid, sort by date
-        if (dateA.isValid() && dateB.isValid()) {
-          return dateB.toDate().getTime() - dateA.toDate().getTime();
+        if (isValid(dateA) && isValid(dateB)) {
+          return getTime(dateB) - getTime(dateA);
         }
         // Put invalid dates at the end
-        if (!dateA.isValid() && dateB.isValid()) return 1;
-        if (dateA.isValid() && !dateB.isValid()) return -1;
+        if (!isValid(dateA) && isValid(dateB)) return 1;
+        if (isValid(dateA) && !isValid(dateB)) return -1;
         // If both invalid, maintain original order
         return 0;
       });
@@ -156,6 +163,63 @@ const LottoScreen: React.FC = () => {
     } catch (error) {
       console.error("Error saving draw:", error);
       Alert.alert("שגיאה", "שגיאה בשמירת המספרים");
+    }
+  };
+
+  const handleDelete = async (index: number) => {
+    try {
+      const itemToDelete = savedDraws[index];
+
+      if (itemToDelete.isPredicted) {
+        // Handle predicted draws deletion
+        const savedPredictions = await AsyncStorage.getItem(
+          "savedLottoPredictions"
+        );
+        const predictedSaved = savedPredictions
+          ? JSON.parse(savedPredictions)
+          : [];
+
+        // Find and remove the prediction from storage
+        const updatedPredictions = predictedSaved.filter((pred: any) => {
+          // Match by numbers and strongNumber since we don't have original uniqueId
+          return !(
+            JSON.stringify(pred.numbers.sort()) ===
+              JSON.stringify(itemToDelete.numbers.sort()) &&
+            pred.strongNumber === itemToDelete.strongNumber
+          );
+        });
+
+        await AsyncStorage.setItem(
+          "savedLottoPredictions",
+          JSON.stringify(updatedPredictions)
+        );
+      } else {
+        // Handle regular draws deletion
+        const saved = await AsyncStorage.getItem("lottoDraws");
+        const regularSaved = saved ? JSON.parse(saved) : [];
+
+        // Filter out the deleted item from regular saved draws
+        const updatedRegularDraws = regularSaved.filter((draw: any) => {
+          return !(
+            JSON.stringify(draw.numbers.sort()) ===
+              JSON.stringify(itemToDelete.numbers.sort()) &&
+            draw.strongNumber === itemToDelete.strongNumber &&
+            draw.date === itemToDelete.date
+          );
+        });
+
+        await AsyncStorage.setItem(
+          "lottoDraws",
+          JSON.stringify(updatedRegularDraws)
+        );
+      }
+
+      // Update state by removing the item at the specified index
+      const updatedSavedDraws = savedDraws.filter((_, i) => i !== index);
+      setSavedDraws(updatedSavedDraws);
+    } catch (error) {
+      console.error("Error deleting draw:", error);
+      Alert.alert("שגיאה", "שגיאה במחיקת המספרים");
     }
   };
   return (
@@ -216,7 +280,7 @@ const LottoScreen: React.FC = () => {
           </View>
 
           {savedDraws.length > 0 ? (
-            <SavedNumbers savedDraws={savedDraws} />
+            <SavedNumbers savedDraws={savedDraws} onDelete={handleDelete} />
           ) : (
             <EmptyState />
           )}
