@@ -24,12 +24,12 @@ const initializeAds = async () => {
 const shouldInitializeAds = () => {
   // Check if running in development mode
   const isDev = __DEV__;
-  
+
   // In development, only initialize if we have test ads
   if (isDev) {
     return true; // Test ads should work in development
   }
-  
+
   // In production, always try to initialize
   return true;
 };
