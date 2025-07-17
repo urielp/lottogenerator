@@ -18,7 +18,10 @@ interface SavedChanceProps {
   onDelete?: (index: number) => void;
 }
 
-const SavedChance: React.FC<SavedChanceProps> = ({ savedChances, onDelete }) => {
+const SavedChance: React.FC<SavedChanceProps> = ({
+  savedChances,
+  onDelete,
+}) => {
   if (!savedChances.length) {
     return <EmptyState />;
   }
@@ -45,20 +48,25 @@ const SavedChance: React.FC<SavedChanceProps> = ({ savedChances, onDelete }) => 
       <Text style={styles.savedTitle}>קלפים שמורים</Text>
       {savedChances.map((entry, index) => (
         <View key={index} style={styles.savedEntry}>
-          <Text style={styles.entryHeader}>
-          <Text style={styles.dateText}>
-            {entry.isPredicted ? "חיזוי - " : ""}
-            {entry.date}
-          </Text>
-          {onDelete && (
+          <View style={styles.entryHeader}>
+            <Text style={styles.dateText}>
+              {entry.isPredicted ? "חיזוי - " : ""}
+              {entry.date}
+            </Text>
+            {onDelete && (
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => handleDelete(index)}
               >
-                <Ionicons name="trash-outline" size={20} color="#ff4444"  style={{ marginBottom: -6, marginLeft: 5 }} />
+                <Ionicons
+                  name="trash-outline"
+                  size={20}
+                  color="#ff4444"
+                  style={{ marginTop: -11, marginLeft: 5 }}
+                />
               </TouchableOpacity>
             )}
-            </Text>
+          </View>
           <View style={styles.savedCards}>
             <Card
               suit="♥"
@@ -119,8 +127,8 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     color: "#666",
-    marginBottom: 10,
     textAlign: "right",
+    flex: 1,
   },
   savedCards: {
     flexDirection: "row",
