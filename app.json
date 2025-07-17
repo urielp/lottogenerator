@@ -2,7 +2,7 @@
   "expo": {
     "name": "מגריל מספרי לוטו וצ'אנס",
     "slug": "lotto-generator",
-    "version": "1.0.3",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -27,7 +27,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.lottogenerator.app",
-      "versionCode": 3,
+      "versionCode": 6,
       "permissions": [],
       "allowBackup": true,
       "softwareKeyboardLayoutMode": "pan",
