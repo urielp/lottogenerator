@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.lottogenerator.app",
@@ -40,13 +42,24 @@
     },
     "plugins": [
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0"
+          }
+        }
+      ],
+      [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-3092951387754338~4914453701",
           "iosAppId": "ca-app-pub-3092951387754338~4914453701",
           "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "react-native-google-mobile-ads": {
       "android_app_id": "ca-app-pub-3092951387754338~4914453701",
