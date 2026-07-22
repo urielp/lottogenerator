@@ -10,7 +10,15 @@ interface LottoNumbers {
   date: string;
   isPredicted?: boolean;
   uniqueId?: string;
+  id?: string;
+  source?: "generated" | "prediction" | "manual";
 }
+
+const sourceLabel = (entry: LottoNumbers): string => {
+  if (entry.source === "manual") return "המספרים שלי - ";
+  if (entry.source === "prediction" || entry.isPredicted) return "חיזוי - ";
+  return "";
+};
 
 interface SavedNumbersProps {
   savedDraws: LottoNumbers[];
@@ -52,12 +60,16 @@ const SavedNumbers: React.FC<SavedNumbersProps> = ({
       <Text style={styles.savedTitle}>מספרים שמורים</Text>
       {savedDraws.map((entry, index) => (
         <View
-          key={entry.uniqueId || `${entry.date}_${entry.strongNumber}_${index}`}
+          key={
+            entry.id ||
+            entry.uniqueId ||
+            `${entry.date}_${entry.strongNumber}_${index}`
+          }
           style={styles.savedEntry}
         >
           <View style={styles.entryHeader}>
             <Text style={styles.dateText}>
-              {entry.isPredicted ? "חיזוי - " : ""}
+              {sourceLabel(entry)}
               {entry.date}
             </Text>
             {onDelete && (
@@ -81,14 +93,14 @@ const SavedNumbers: React.FC<SavedNumbersProps> = ({
                 number={num}
                 isStrong={false}
                 index={numIndex}
-                isPredicted={entry.isPredicted}
+                isPredicted={entry.isPredicted || entry.source === "prediction"}
               />
             ))}
             <NumberCard
               number={entry.strongNumber}
               isStrong
               index={entry.numbers.length}
-              isPredicted={entry.isPredicted}
+              isPredicted={entry.isPredicted || entry.source === "prediction"}
             />
           </View>
         </View>

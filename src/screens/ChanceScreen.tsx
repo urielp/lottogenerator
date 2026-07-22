@@ -8,112 +8,50 @@ import {
   SafeAreaView,
   Platform,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Card from "../components/Card";
 import SavedChance from "../components/savedChance";
 import { Button } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { format, parse, isValid, getTime, parseISO } from "date-fns";
-import ScreenWithAd from "../components/ScreenWithAd";
 import AdBanner from "../components/AdBanner";
-import Constants from "expo-constants";
 import EmptyState from "../components/emptyState";
 import { generateChanceDraw } from "../utils/generators";
-interface ChanceDraw {
+import ManualChanceModal, {
+  ManualChancePick,
+} from "../components/ManualChanceModal";
+import {
+  SavedChanceItem,
+  loadSavedChance,
+  addSavedChance,
+  deleteSavedChance,
+} from "../utils/savedStorage";
+
+interface CurrentChanceDraw {
   hearts: string;
   diamonds: string;
   clubs: string;
   spades: string;
   date: string;
-  isPredicted?: boolean;
 }
 
-const CARD_VALUES = ["7", "8", "9", "10", "J", "Q", "K", "A"];
-const SUITS = ["♥", "♦", "♣", "♠"] as const;
-
 const ChanceScreen: React.FC = () => {
-  const [currentDraw, setCurrentDraw] = useState<ChanceDraw | null>(null);
-  const [savedDraws, setSavedDraws] = useState<ChanceDraw[]>([]);
+  const [currentDraw, setCurrentDraw] = useState<CurrentChanceDraw | null>(
+    null
+  );
+  const [savedDraws, setSavedDraws] = useState<SavedChanceItem[]>([]);
+  const [manualModalVisible, setManualModalVisible] = useState(false);
   const insets = useSafeAreaInsets();
 
   useFocusEffect(
     React.useCallback(() => {
-      loadSavedDraws();
+      loadSavedChance()
+        .then(setSavedDraws)
+        .catch((error) => console.error("Error loading saved draws:", error));
     }, [])
   );
 
-  const loadSavedDraws = async () => {
-    try {
-      // Load regular saved draws
-      const saved = await AsyncStorage.getItem("chanceDraws");
-      const regularSaved = saved ? JSON.parse(saved) : [];
-
-      // Load predicted draws
-      const savedPredictions = await AsyncStorage.getItem(
-        "savedChancePredictions"
-      );
-      const predictedSaved = savedPredictions
-        ? JSON.parse(savedPredictions)
-        : [];
-
-      // Combine both types of saved draws
-      const allSaved = [
-        ...regularSaved,
-        ...predictedSaved.map((pred: any) => ({
-          hearts: pred.hearts.toString(),
-          diamonds: pred.diamonds.toString(),
-          clubs: pred.clubs.toString(),
-          spades: pred.spades.toString(),
-          date: (() => {
-            try {
-              let parsedDate = parseISO(pred.date);
-              if (!isValid(parsedDate)) {
-                parsedDate = new Date(pred.date);
-              }
-              return isValid(parsedDate)
-                ? format(parsedDate, "dd/MM/yyyy HH:mm")
-                : "תאריך לא תקין";
-            } catch {
-              return "תאריך לא תקין";
-            }
-          })(),
-          isPredicted: true,
-        })),
-      ].sort((a, b) => {
-        const dateA = parse(a.date, "dd/MM/yyyy HH:mm", new Date());
-        const dateB = parse(b.date, "dd/MM/yyyy HH:mm", new Date());
-
-        if (isValid(dateA) && isValid(dateB)) {
-          return getTime(dateB) - getTime(dateA);
-        }
-        if (!isValid(dateA) && isValid(dateB)) return 1;
-        if (isValid(dateA) && !isValid(dateB)) return -1;
-        return 0;
-      });
-
-      setSavedDraws(allSaved);
-    } catch (error) {
-      console.error("Error loading saved draws:", error);
-    }
-  };
-
   const drawCard = () => {
-    // const newDraw: ChanceDraw = {
-    //   hearts: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
-    //   diamonds: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
-    //   clubs: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
-    //   spades: CARD_VALUES[Math.floor(Math.random() * CARD_VALUES.length)],
-    //   date: new Date().toLocaleString("he-IL", {
-    //     year: "numeric",
-    //     month: "2-digit",
-    //     day: "2-digit",
-    //     hour: "2-digit",
-    //     minute: "2-digit",
-    //     hour12: false,
-    //   }),
-    // };
     setCurrentDraw(generateChanceDraw());
   };
 
@@ -124,20 +62,42 @@ const ChanceScreen: React.FC = () => {
     }
 
     try {
-      const updatedSaved = [...savedDraws, currentDraw];
-      await AsyncStorage.setItem("chanceDraws", JSON.stringify(updatedSaved));
-      setSavedDraws(updatedSaved);
+      const updated = await addSavedChance({
+        hearts: currentDraw.hearts,
+        diamonds: currentDraw.diamonds,
+        clubs: currentDraw.clubs,
+        spades: currentDraw.spades,
+        source: "generated",
+      });
+      setSavedDraws(updated);
       Alert.alert("הצלחה", "הקלפים נשמרו בהצלחה!");
     } catch (error) {
       console.error("Error saving draw:", error);
       Alert.alert("שגיאה", "שגיאה בשמירת הקלפים");
     }
   };
+
+  const saveManualDraw = async (pick: ManualChancePick) => {
+    try {
+      const updated = await addSavedChance({
+        ...pick,
+        source: "manual",
+      });
+      setSavedDraws(updated);
+      setManualModalVisible(false);
+      Alert.alert("הצלחה", "הקלפים שלך נשמרו בהצלחה!");
+    } catch (error) {
+      console.error("Error saving manual draw:", error);
+      Alert.alert("שגיאה", "שגיאה בשמירת הקלפים");
+    }
+  };
+
   const handleDelete = async (index: number) => {
     try {
-      const updatedSaved = savedDraws.filter((_, i) => i !== index);
-      await AsyncStorage.setItem("chanceDraws", JSON.stringify(updatedSaved));
-      setSavedDraws(updatedSaved);
+      const itemToDelete = savedDraws[index];
+      if (!itemToDelete) return;
+      const updated = await deleteSavedChance(itemToDelete.id);
+      setSavedDraws(updated);
       Alert.alert("הצלחה", "הקלפים נמחקו בהצלחה!");
     } catch (error) {
       console.error("Error deleting draw:", error);
@@ -190,6 +150,21 @@ const ChanceScreen: React.FC = () => {
             </Button>
           </View>
 
+          <View style={styles.buttonContainer}>
+            <Button
+              mode="outlined"
+              onPress={() => setManualModalVisible(true)}
+              style={styles.button}
+              icon={({ size, color }) => (
+                <Ionicons name="create-outline" size={24} color="#333" />
+              )}
+              labelStyle={styles.buttonText}
+              textColor="#333"
+            >
+              הוסף קלפים משלי
+            </Button>
+          </View>
+
           <ScrollView style={styles.savedContainer}>
             <AdBanner />
             {savedDraws.length > 0 ? (
@@ -199,6 +174,12 @@ const ChanceScreen: React.FC = () => {
             )}
           </ScrollView>
         </View>
+
+        <ManualChanceModal
+          visible={manualModalVisible}
+          onClose={() => setManualModalVisible(false)}
+          onSave={saveManualDraw}
+        />
       </View>
     </SafeAreaView>
   );
@@ -250,38 +231,6 @@ const styles = StyleSheet.create({
   },
   savedContainer: {
     flex: 1,
-  },
-  savedTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#333",
-    textAlign: "right",
-  },
-  savedEntry: {
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  dateText: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 10,
-    textAlign: "right",
-  },
-  savedCards: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
   },
 });
 
