@@ -9,11 +9,12 @@ import {
   Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NumberCard from "../components/NumberCard";
 import { Button } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import moment from "moment";
+import { format, parse, isValid, getTime, parseISO } from "date-fns";
 import ScreenWithAd from "../components/ScreenWithAd";
 import AdBanner from "../components/AdBanner";
 import Constants from "expo-constants";
@@ -24,11 +25,13 @@ interface LottoNumbers {
   strongNumber: number;
   date: string;
   isPredicted?: boolean;
+  uniqueId?: string;
 }
 
 const LottoScreen: React.FC = () => {
   const [currentDraw, setCurrentDraw] = useState<LottoNumbers | null>(null);
   const [savedDraws, setSavedDraws] = useState<LottoNumbers[]>([]);
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -42,6 +45,14 @@ const LottoScreen: React.FC = () => {
       const saved = await AsyncStorage.getItem("lottoDraws");
       const regularSaved = saved ? JSON.parse(saved) : [];
 
+      // Ensure regular saved draws have uniqueId
+      const regularSavedWithIds = regularSaved.map(
+        (draw: any, index: number) => ({
+          ...draw,
+          uniqueId: draw.uniqueId || `regular_legacy_${index}_${Date.now()}`,
+        })
+      );
+
       // Load predicted draws
       const savedPredictions = await AsyncStorage.getItem(
         "savedLottoPredictions"
@@ -52,20 +63,63 @@ const LottoScreen: React.FC = () => {
 
       // Combine both types of saved draws
       const allSaved = [
-        ...regularSaved,
-        ...predictedSaved.map((pred: any) => ({
-          numbers: pred.numbers,
-          strongNumber: pred.strongNumber,
-          date: moment(pred.date).isValid()
-            ? moment(pred.date).format("DD/MM/YYYY HH:mm")
-            : "תאריך לא תקין",
-          isPredicted: true,
-        })),
-      ].sort(
-        (a, b) =>
-          moment(b.date, "DD/MM/YYYY HH:mm").toDate().getTime() -
-          moment(a.date, "DD/MM/YYYY HH:mm").toDate().getTime()
-      );
+        ...regularSavedWithIds,
+        ...predictedSaved.map((pred: any, index: number) => {
+          // Handle different possible date formats
+          let formattedDate = "תאריך לא תקין";
+
+          if (pred.date) {
+            // Try to parse different date formats
+            let parsedDate;
+
+            // Try DD.MM.YYYY, HH:mm format
+            if (pred.date.includes(".") && pred.date.includes(",")) {
+              parsedDate = parse(pred.date, "dd.MM.yyyy, HH:mm", new Date());
+            }
+            // Try DD/MM/YYYY HH:mm format
+            else if (pred.date.includes("/")) {
+              parsedDate = parse(pred.date, "dd/MM/yyyy HH:mm", new Date());
+            }
+            // Try ISO format or other standard formats
+            else {
+              try {
+                parsedDate = parseISO(pred.date);
+                if (!isValid(parsedDate)) {
+                  parsedDate = new Date(pred.date);
+                }
+              } catch {
+                parsedDate = new Date(pred.date);
+              }
+            }
+
+            if (isValid(parsedDate)) {
+              formattedDate = format(parsedDate, "dd/MM/yyyy HH:mm");
+            }
+          }
+
+          return {
+            numbers: pred.numbers,
+            strongNumber: pred.strongNumber,
+            date: formattedDate,
+            isPredicted: true,
+            uniqueId: `predicted_${index}_${Date.now()}`, // Add unique identifier
+          };
+        }),
+      ].sort((a, b) => {
+        // Handle sorting with proper date parsing
+        const dateA = parse(a.date, "dd/MM/yyyy HH:mm", new Date());
+        const dateB = parse(b.date, "dd/MM/yyyy HH:mm", new Date());
+
+        // If both dates are valid, sort by date
+        if (isValid(dateA) && isValid(dateB)) {
+          return getTime(dateB) - getTime(dateA);
+        }
+        // Put invalid dates at the end
+        if (!isValid(dateA) && isValid(dateB)) return 1;
+        if (isValid(dateA) && !isValid(dateB)) return -1;
+        // If both invalid, maintain original order
+        return 0;
+      });
 
       setSavedDraws(allSaved);
     } catch (error) {
@@ -100,7 +154,11 @@ const LottoScreen: React.FC = () => {
     }
 
     try {
-      const updatedSaved = [...savedDraws, currentDraw];
+      const drawWithId = {
+        ...currentDraw,
+        uniqueId: `regular_${Date.now()}_${Math.random()}`,
+      };
+      const updatedSaved = [...savedDraws, drawWithId];
       await AsyncStorage.setItem("lottoDraws", JSON.stringify(updatedSaved));
       setSavedDraws(updatedSaved);
       Alert.alert("הצלחה", "המספרים נשמרו בהצלחה!");
@@ -109,10 +167,67 @@ const LottoScreen: React.FC = () => {
       Alert.alert("שגיאה", "שגיאה בשמירת המספרים");
     }
   };
+
+  const handleDelete = async (index: number) => {
+    try {
+      const itemToDelete = savedDraws[index];
+
+      if (itemToDelete.isPredicted) {
+        // Handle predicted draws deletion
+        const savedPredictions = await AsyncStorage.getItem(
+          "savedLottoPredictions"
+        );
+        const predictedSaved = savedPredictions
+          ? JSON.parse(savedPredictions)
+          : [];
+
+        // Find and remove the prediction from storage
+        const updatedPredictions = predictedSaved.filter((pred: any) => {
+          // Match by numbers and strongNumber since we don't have original uniqueId
+          return !(
+            JSON.stringify(pred.numbers.sort()) ===
+              JSON.stringify(itemToDelete.numbers.sort()) &&
+            pred.strongNumber === itemToDelete.strongNumber
+          );
+        });
+
+        await AsyncStorage.setItem(
+          "savedLottoPredictions",
+          JSON.stringify(updatedPredictions)
+        );
+      } else {
+        // Handle regular draws deletion
+        const saved = await AsyncStorage.getItem("lottoDraws");
+        const regularSaved = saved ? JSON.parse(saved) : [];
+
+        // Filter out the deleted item from regular saved draws
+        const updatedRegularDraws = regularSaved.filter((draw: any) => {
+          return !(
+            JSON.stringify(draw.numbers.sort()) ===
+              JSON.stringify(itemToDelete.numbers.sort()) &&
+            draw.strongNumber === itemToDelete.strongNumber &&
+            draw.date === itemToDelete.date
+          );
+        });
+
+        await AsyncStorage.setItem(
+          "lottoDraws",
+          JSON.stringify(updatedRegularDraws)
+        );
+      }
+
+      // Update state by removing the item at the specified index
+      const updatedSavedDraws = savedDraws.filter((_, i) => i !== index);
+      setSavedDraws(updatedSavedDraws);
+    } catch (error) {
+      console.error("Error deleting draw:", error);
+      Alert.alert("שגיאה", "שגיאה במחיקת המספרים");
+    }
+  };
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <Text style={styles.title}>משחק לוטו</Text>
         </View>
         {Platform.OS !== "web" && Constants.appOwnership !== "expo" && (
@@ -167,7 +282,7 @@ const LottoScreen: React.FC = () => {
           </View>
 
           {savedDraws.length > 0 ? (
-            <SavedNumbers savedDraws={savedDraws} />
+            <SavedNumbers savedDraws={savedDraws} onDelete={handleDelete} />
           ) : (
             <EmptyState />
           )}
@@ -194,7 +309,6 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 10,
-    paddingTop: Platform.OS === "ios" ? 40 : 20,
   },
   title: {
     fontSize: 24,
