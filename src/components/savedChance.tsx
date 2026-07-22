@@ -11,7 +11,15 @@ interface ChanceDraw {
   spades: string;
   date: string;
   isPredicted?: boolean;
+  id?: string;
+  source?: "generated" | "prediction" | "manual";
 }
+
+const sourceLabel = (entry: ChanceDraw): string => {
+  if (entry.source === "manual") return "הקלפים שלי - ";
+  if (entry.source === "prediction" || entry.isPredicted) return "חיזוי - ";
+  return "";
+};
 
 interface SavedChanceProps {
   savedChances: ChanceDraw[];
@@ -47,10 +55,10 @@ const SavedChance: React.FC<SavedChanceProps> = ({
     <View style={styles.savedContainer}>
       <Text style={styles.savedTitle}>קלפים שמורים</Text>
       {savedChances.map((entry, index) => (
-        <View key={index} style={styles.savedEntry}>
+        <View key={entry.id || index} style={styles.savedEntry}>
           <View style={styles.entryHeader}>
             <Text style={styles.dateText}>
-              {entry.isPredicted ? "חיזוי - " : ""}
+              {sourceLabel(entry)}
               {entry.date}
             </Text>
             {onDelete && (
@@ -72,25 +80,25 @@ const SavedChance: React.FC<SavedChanceProps> = ({
               suit="♥"
               value={entry.hearts}
               index={0}
-              isPredicted={entry.isPredicted}
+              isPredicted={entry.isPredicted || entry.source === "prediction"}
             />
             <Card
               suit="♦"
               value={entry.diamonds}
               index={1}
-              isPredicted={entry.isPredicted}
+              isPredicted={entry.isPredicted || entry.source === "prediction"}
             />
             <Card
               suit="♣"
               value={entry.clubs}
               index={2}
-              isPredicted={entry.isPredicted}
+              isPredicted={entry.isPredicted || entry.source === "prediction"}
             />
             <Card
               suit="♠"
               value={entry.spades}
               index={3}
-              isPredicted={entry.isPredicted}
+              isPredicted={entry.isPredicted || entry.source === "prediction"}
             />
           </View>
         </View>
