@@ -2,7 +2,7 @@
   "expo": {
     "name": "מגריל מספרי לוטו וצ'אנס",
     "slug": "lotto-generator",
-    "version": "1.0.3",
+    "version": "2.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -12,12 +12,14 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.lottogenerator.app",
       "config": {
-        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~1178404587"
+        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~4914453701"
       }
     },
     "android": {
@@ -27,18 +29,42 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.lottogenerator.app",
-      "versionCode": 3,
+      "versionCode": 10,
       "permissions": [],
       "allowBackup": true,
       "softwareKeyboardLayoutMode": "pan",
       "config": {
-        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~1178404587"
+        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~4914453701"
       }
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["react-native-google-mobile-ads"],
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0"
+          }
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3092951387754338~4914453701",
+          "iosAppId": "ca-app-pub-3092951387754338~4914453701",
+          "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
+        }
+      ],
+      "expo-build-properties"
+    ],
+    "react-native-google-mobile-ads": {
+      "android_app_id": "ca-app-pub-3092951387754338~4914453701",
+      "ios_app_id": "ca-app-pub-3092951387754338~4914453701"
+    },
     "extra": {
       "eas": {
         "projectId": "59ee84a4-972e-471f-9daf-0dc60c9f4480"

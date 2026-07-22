@@ -12,6 +12,7 @@ import {
   Animated,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -46,17 +47,13 @@ interface Settings {
 }
 
 const StatisticsScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const [settings] = useState<Settings>({
     lottoUrl: "https://pais.co.il/Lotto/lotto_resultsDownload.aspx",
     chanceUrl: "https://pais.co.il/chance/chance_resultsDownload.aspx",
   });
-  const {
-    statistics,
-    isLoading,
-    isRefreshing,
-    handleRefresh,
-    loadStatistics,
-  } = useStatisticsData();
+  const { statistics, isLoading, isRefreshing, handleRefresh, loadStatistics } =
+    useStatisticsData();
   const progressAnimations = useRef<{ [key: string]: Animated.Value }>(
     {}
   ).current;
@@ -212,9 +209,9 @@ const StatisticsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity
-            style={styles.refreshButton}
+            style={[styles.refreshButton, { top: insets.top + 8 }]}
             onPress={handleRefresh}
             disabled={isRefreshing}
           >
@@ -312,7 +309,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
-    paddingTop: Platform.OS === "ios" ? 40 : 20,
     position: "relative",
     paddingHorizontal: 40,
     minHeight: 50,
@@ -323,7 +319,6 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlign: "center",
     marginBottom: 0,
-    marginTop: Platform.OS === "ios" ? 10 : 0,
   },
   section: {
     backgroundColor: "white",
@@ -451,7 +446,6 @@ const styles = StyleSheet.create({
     width: 40,
     alignItems: "center",
     justifyContent: "center",
-    top: Platform.OS === "ios" ? 8 : 0,
   },
   refreshIcon: {
     opacity: 1,

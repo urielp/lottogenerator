@@ -33,5 +33,15 @@ allprojects {
   }
 }
 
+// Target Android 16 (API 36) per Google Play requirement (deadline 2026-08-31).
+// Set before `expo-root-project` (which uses setIfNotExist and would otherwise
+// default these to 35). This is the authoritative value for the bare/committed
+// native project that EAS builds without running `expo prebuild`.
+ext {
+  compileSdkVersion = 36
+  targetSdkVersion = 36
+  buildToolsVersion = "36.0.0"
+}
+
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"

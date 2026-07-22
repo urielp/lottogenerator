@@ -92,8 +92,8 @@ android {
         applicationId 'com.lottogenerator.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.0.3"
+        versionCode 10
+        versionName "2.0.4"
     }
     signingConfigs {
         debug {

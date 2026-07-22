@@ -10,6 +10,7 @@ import {
   SafeAreaView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { generatePrediction } from "../utils/lottoPredictor";
@@ -34,6 +35,7 @@ const CHANCE_CSV_KEY = "chance_csv_data";
 const CHANCE_CSV_DATE_KEY = "chance_csv_last_updated";
 
 const PredictionsScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const [settings] = useState<Settings>({
     lottoUrl: "https://pais.co.il/Lotto/lotto_resultsDownload.aspx",
     chanceUrl: "https://pais.co.il/chance/chance_resultsDownload.aspx",
@@ -60,7 +62,8 @@ const PredictionsScreen: React.FC = () => {
     try {
       // 1️⃣ Setup keys for AsyncStorage
       const csvKey = gameType === "lotto" ? LOTTO_CSV_KEY : CHANCE_CSV_KEY;
-      const dateKey = gameType === "lotto" ? LOTTO_CSV_DATE_KEY : CHANCE_CSV_DATE_KEY;
+      const dateKey =
+        gameType === "lotto" ? LOTTO_CSV_DATE_KEY : CHANCE_CSV_DATE_KEY;
       const url =
         gameType === "lotto"
           ? URLs.lotto.resultsDownload
@@ -101,7 +104,11 @@ const PredictionsScreen: React.FC = () => {
           );
         }
 
-        if (!response.data || typeof response.data !== "string" || response.data.trim().length === 0) {
+        if (
+          !response.data ||
+          typeof response.data !== "string" ||
+          response.data.trim().length === 0
+        ) {
           throw new Error(
             `לא התקבלו נתונים תקינים מכתובת ה-URL של ${
               gameType === "lotto" ? "לוטו" : "צ'אנס"
@@ -225,7 +232,7 @@ const PredictionsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
         <View style={styles.header}>
           <Text style={styles.title}>צור חיזויים</Text>
         </View>
@@ -283,7 +290,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
     padding: 20,
-    paddingTop: Platform.OS === "ios" ? 40 : 20,
   },
   loadingContainer: {
     flex: 1,
@@ -299,7 +305,6 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 10,
-    paddingTop: Platform.OS === "ios" ? 10 : 0,
   },
   title: {
     fontSize: 24,
