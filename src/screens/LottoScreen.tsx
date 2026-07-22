@@ -9,6 +9,7 @@ import {
   Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NumberCard from "../components/NumberCard";
 import { Button } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,6 +31,7 @@ interface LottoNumbers {
 const LottoScreen: React.FC = () => {
   const [currentDraw, setCurrentDraw] = useState<LottoNumbers | null>(null);
   const [savedDraws, setSavedDraws] = useState<LottoNumbers[]>([]);
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -225,7 +227,7 @@ const LottoScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <Text style={styles.title}>משחק לוטו</Text>
         </View>
         {Platform.OS !== "web" && Constants.appOwnership !== "expo" && (
@@ -307,7 +309,6 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 10,
-    paddingTop: Platform.OS === "ios" ? 40 : 20,
   },
   title: {
     fontSize: 24,

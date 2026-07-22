@@ -9,6 +9,7 @@ import {
   Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Card from "../components/Card";
 import SavedChance from "../components/savedChance";
 import { Button } from "react-native-paper";
@@ -35,6 +36,7 @@ const SUITS = ["♥", "♦", "♣", "♠"] as const;
 const ChanceScreen: React.FC = () => {
   const [currentDraw, setCurrentDraw] = useState<ChanceDraw | null>(null);
   const [savedDraws, setSavedDraws] = useState<ChanceDraw[]>([]);
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -145,7 +147,7 @@ const ChanceScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <Text style={styles.title}>משחק צ'אנס</Text>
         </View>
 
@@ -219,7 +221,6 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 10,
-    paddingTop: Platform.OS === "ios" ? 40 : 20,
   },
   title: {
     fontSize: 24,

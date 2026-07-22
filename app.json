@@ -2,7 +2,7 @@
   "expo": {
     "name": "מגריל מספרי לוטו וצ'אנס",
     "slug": "lotto-generator",
-    "version": "2.0.0",
+    "version": "2.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,10 +14,10 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.lottogenerator.app",
       "config": {
-        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~1178404587"
+        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~4914453701"
       }
     },
     "android": {
@@ -27,12 +27,12 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.lottogenerator.app",
-      "versionCode": 6,
+      "versionCode": 10,
       "permissions": [],
       "allowBackup": true,
       "softwareKeyboardLayoutMode": "pan",
       "config": {
-        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~1178404587"
+        "googleMobileAdsAppId": "ca-app-pub-3092951387754338~4914453701"
       }
     },
     "web": {
@@ -42,15 +42,15 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-3092951387754338~1178404587",
-          "iosAppId": "ca-app-pub-3092951387754338~1178404587",
+          "androidAppId": "ca-app-pub-3092951387754338~4914453701",
+          "iosAppId": "ca-app-pub-3092951387754338~4914453701",
           "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
         }
       ]
     ],
     "react-native-google-mobile-ads": {
-      "android_app_id": "ca-app-pub-3092951387754338~1178404587",
-      "ios_app_id": "ca-app-pub-3092951387754338~1178404587"
+      "android_app_id": "ca-app-pub-3092951387754338~4914453701",
+      "ios_app_id": "ca-app-pub-3092951387754338~4914453701"
     },
     "extra": {
       "eas": {
